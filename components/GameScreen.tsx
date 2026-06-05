@@ -28,6 +28,7 @@ import {
   Check,
   X,
   Flag,
+  Users,
 } from "lucide-react";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = {
@@ -344,13 +345,22 @@ export default function GameScreen() {
               토큰 <b className="tabular-nums">{tokens}</b>
             </span>
           )}
-          <Link
-            href="/ranking"
-            className="flex items-center gap-1 text-xs font-medium text-amber-200/60 transition hover:text-amber-100"
-          >
-            <Crown className="h-3.5 w-3.5" />
-            랭킹
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/versus"
+              className="flex items-center gap-1 text-xs font-medium text-amber-200/60 transition hover:text-amber-100"
+            >
+              <Users className="h-3.5 w-3.5" />
+              친구 대전
+            </Link>
+            <Link
+              href="/ranking"
+              className="flex items-center gap-1 text-xs font-medium text-amber-200/60 transition hover:text-amber-100"
+            >
+              <Crown className="h-3.5 w-3.5" />
+              랭킹
+            </Link>
+          </div>
         </div>
       )}
 
