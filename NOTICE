@@ -1,0 +1,22 @@
+렌주 마스터 (Renju Master)
+==========================
+
+This application bundles and runs the Rapfi Gomoku/Renju engine.
+
+Rapfi
+-----
+- Copyright (C) the Rapfi authors (dhbloo and contributors)
+- License: GNU General Public License v3.0 (GPLv3)
+- Source: https://github.com/dhbloo/rapfi
+- Prebuilt WebAssembly artifacts under `public/engine/build/`
+  (rapfi-single*.js, rapfi-single*.wasm, rapfi.data) are redistributions of the
+  Rapfi engine and its NNUE network weights, taken from the Gomoku Calculator
+  project (https://github.com/dhbloo/gomoku-calculator).
+
+Because this project links/redistributes GPLv3-licensed code, the project as a
+whole is distributed under the GPLv3 (see the LICENSE file). When you distribute
+this application, you must provide the complete corresponding source code (or a
+written offer / pointer to it), including any modifications to the engine.
+
+The engine wrapper (`public/engine/engine-worker.js`) and all original
+application code in this repository are likewise GPLv3.
