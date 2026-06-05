@@ -27,6 +27,7 @@ import {
   Coffee,
   Check,
   X,
+  Flag,
 } from "lucide-react";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = {
@@ -43,6 +44,8 @@ const STUDYCAFE = {
   phone: "010-4199-4170",
 };
 
+const TURN_SECONDS = 30; // 내 차례 수당 제한시간
+
 export default function GameScreen() {
   const g = useGame();
   const [showRules, setShowRules] = useState(false);
@@ -51,6 +54,7 @@ export default function GameScreen() {
   const [confirmMode, setConfirmMode] = useState(true);
   const [pending, setPending] = useState<Point | null>(null);
   const loading = g.engineState === "loading";
+  const turnIsHuman = g.currentPlayer === g.humanColor;
 
   // 첫 방문 시 사용 안내 자동 표시 + 저장된 착수 방식 불러오기.
   useEffect(() => {
@@ -104,6 +108,42 @@ export default function GameScreen() {
   useEffect(() => {
     if (g.status.kind === "playing") setResultDismissed(false);
   }, [g.status.kind]);
+
+  // 기권: 실수 방지 2탭 (한 번 누르면 "정말?"으로, 다시 누르면 기권).
+  const [resignArm, setResignArm] = useState(false);
+  useEffect(() => {
+    setResignArm(false);
+  }, [g.moves, g.status.kind]);
+
+  // 수당 제한시간(30초): 내 차례에 카운트다운, 0이 되면 시간패(기권 처리).
+  const [secsLeft, setSecsLeft] = useState<number | null>(null);
+  const deadlineRef = useRef<number | null>(null);
+  useEffect(() => {
+    const humanTurn =
+      g.status.kind === "playing" &&
+      !g.thinking &&
+      turnIsHuman &&
+      g.engineState !== "loading";
+    if (!humanTurn) {
+      deadlineRef.current = null;
+      setSecsLeft(null);
+      return;
+    }
+    deadlineRef.current = Date.now() + TURN_SECONDS * 1000;
+    setSecsLeft(TURN_SECONDS);
+    const id = setInterval(() => {
+      if (deadlineRef.current == null) return;
+      const left = Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000));
+      setSecsLeft(left);
+      if (left <= 0) {
+        deadlineRef.current = null;
+        clearInterval(id);
+        g.resign(); // 시간패
+      }
+    }, 250);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g.status.kind, g.thinking, turnIsHuman, g.engineState, g.moves]);
   const closeGuide = () => {
     setShowGuide(false);
     try {
@@ -113,8 +153,6 @@ export default function GameScreen() {
     }
   };
   const pct = Math.round(g.loadingProgress * 100);
-
-  const turnIsHuman = g.currentPlayer === g.humanColor;
 
   type StatusKind = "won-human" | "won-ai" | "draw" | "thinking" | "human-turn" | "ai-turn";
   let statusKind: StatusKind;
@@ -274,7 +312,19 @@ export default function GameScreen() {
             <span>{sc.text}</span>
           </span>
         </div>
-        <MoveCount count={g.moves.length} />
+        <div className="flex items-center gap-3">
+          {secsLeft != null && (
+            <span
+              className={
+                "text-sm font-black tabular-nums " +
+                (secsLeft <= 10 ? "text-rose-300 animate-pulse" : "text-amber-200/90")
+              }
+            >
+              {secsLeft}s
+            </span>
+          )}
+          <MoveCount count={g.moves.length} />
+        </div>
       </div>
 
       {/* Account / token bar */}
@@ -350,21 +400,40 @@ export default function GameScreen() {
       )}
 
       {/* Primary actions */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2.5">
         <button
           onClick={() => practiceNewGame()}
-          className="action-btn-primary flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3.5 text-sm font-bold text-stone-950 shadow-amber transition-all duration-150 active:scale-95 hover:bg-amber-400 hover:shadow-amber-lg"
+          className="flex items-center justify-center gap-1.5 rounded-2xl bg-amber-500 px-2 py-3 text-[13px] font-bold text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400"
         >
-          <Plus className="h-4 w-4" />
-          {noSupabase ? "새 게임" : "연습 게임"}
+          <Plus className="h-4 w-4" />새 게임
         </button>
         <button
           onClick={g.undo}
           disabled={!g.canUndo}
-          className="action-btn-secondary flex items-center justify-center gap-2 rounded-2xl bg-stone-800 px-4 py-3.5 text-sm font-semibold text-amber-100/80 ring-1 ring-amber-200/10 shadow-sm transition-all duration-150 active:scale-95 enabled:hover:bg-stone-700 enabled:hover:text-amber-100 disabled:opacity-35 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-1.5 rounded-2xl bg-stone-800 px-2 py-3 text-[13px] font-semibold text-amber-100/80 ring-1 ring-amber-200/10 transition active:scale-95 enabled:hover:bg-stone-700 disabled:opacity-35 disabled:cursor-not-allowed"
         >
-          <RotateCcw className="h-4 w-4" />
-          무르기
+          <RotateCcw className="h-4 w-4" />무르기
+        </button>
+        <button
+          onClick={() => {
+            if (g.status.kind !== "playing") return;
+            if (resignArm) {
+              g.resign();
+              setResignArm(false);
+            } else {
+              setResignArm(true);
+            }
+          }}
+          disabled={g.status.kind !== "playing" || g.moves.length === 0}
+          className={
+            "flex items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-[13px] font-semibold ring-1 transition active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed " +
+            (resignArm
+              ? "bg-rose-600 text-white ring-rose-400/40 hover:bg-rose-500"
+              : "bg-stone-800 text-rose-300/80 ring-rose-400/15 enabled:hover:bg-stone-700")
+          }
+        >
+          <Flag className="h-4 w-4" />
+          {resignArm ? "정말?" : "기권"}
         </button>
       </div>
 

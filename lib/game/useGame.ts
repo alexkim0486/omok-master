@@ -53,6 +53,7 @@ export interface GameView {
   playAt: (x: number, y: number) => void;
   newGame: (humanColor?: Player, difficulty?: Difficulty) => void;
   undo: () => void;
+  resign: () => void;
   setDifficulty: (d: Difficulty) => void;
   canUndo: boolean;
 }
@@ -178,6 +179,12 @@ export function useGame(): GameView {
     });
   }, [thinking, undoUsed, status.kind, humanColor]);
 
+  const resign = useCallback(() => {
+    if (status.kind !== "playing") return;
+    gameIdRef.current += 1; // discard any in-flight AI result
+    setStatus({ kind: "won", winner: opponent(humanColor), line: [] });
+  }, [status.kind, humanColor]);
+
   const setDifficulty = useCallback((d: Difficulty) => setDifficultyState(d), []);
 
   // --- AI turn driver ---
@@ -246,6 +253,7 @@ export function useGame(): GameView {
     playAt,
     newGame,
     undo,
+    resign,
     setDifficulty,
     canUndo,
   };
