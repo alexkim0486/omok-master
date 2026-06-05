@@ -109,8 +109,8 @@ export default function GuideHelp({
           <GuideCard icon={<Coins className="h-4 w-4 text-amber-300" />} title="토큰은 공부로 모아요">
             <ul className="ml-1 list-disc space-y-1 pl-4 marker:text-amber-400/50">
               <li>집중 공부 <b>25분 = 토큰 1개</b> (하루 최대 8개)</li>
-              <li>출석 체크 <b>+2</b></li>
-              <li>게시판 글 <b>+3</b> · 댓글 <b>+1</b></li>
+              <li>출석 체크 <b>+1</b></li>
+              <li>게시판 글 <b>+1</b> · 댓글 <b>+1</b> (각 하루 3개까지)</li>
             </ul>
             <p className="mt-1.5 text-xs text-amber-200/60">
               공부를 열심히 할수록 오목도 더 즐길 수 있어요!
