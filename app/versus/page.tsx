@@ -127,28 +127,30 @@ function Lobby({ onEnter }: { onEnter: (id: string) => void }) {
 
       <div className="flex flex-col gap-2 rounded-2xl bg-stone-800/50 p-4 ring-1 ring-amber-200/10">
         <label className="text-xs font-semibold text-amber-200/70">친구 방 코드 입력</label>
-        <div className="flex gap-2">
+        <div className="flex items-stretch gap-2">
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
-            maxLength={6}
-            placeholder="예: AB3KP"
-            className="flex-1 rounded-xl bg-stone-900/70 px-4 py-3 text-center text-lg font-bold uppercase tracking-[0.3em] text-amber-100 placeholder:tracking-normal placeholder:text-amber-200/30 ring-1 ring-amber-200/10 outline-none focus:ring-amber-400/40"
+            maxLength={5}
+            placeholder="AB3KP"
+            className="min-w-0 flex-1 rounded-xl bg-stone-900/70 px-4 py-3.5 text-center text-xl font-black uppercase tracking-[0.25em] text-amber-100 outline-none ring-1 ring-amber-200/10 placeholder:font-bold placeholder:tracking-[0.25em] placeholder:text-amber-200/25 focus:ring-2 focus:ring-amber-400/50"
           />
           <button
             onClick={handleJoin}
             disabled={busy !== null}
-            className="rounded-xl bg-stone-700 px-5 text-sm font-bold text-amber-100 transition active:scale-95 hover:bg-stone-600 disabled:opacity-50"
+            className="flex shrink-0 items-center justify-center rounded-xl bg-amber-500 px-6 text-sm font-bold text-stone-950 transition active:scale-95 hover:bg-amber-400 disabled:opacity-50"
           >
             {busy === "join" ? <Loader2 className="h-5 w-5 animate-spin" /> : "입장"}
           </button>
         </div>
       </div>
 
-      {error && <p className="text-center text-xs text-rose-300">{error}</p>}
+      {error && <p className="text-center text-sm font-medium text-rose-300">{error}</p>}
 
-      <p className="px-2 text-center text-[11px] leading-relaxed text-amber-200/40">
-        같은 공부인 계정 친구끼리 코드를 공유해 실시간으로 오목을 둬요. 방을 만든 사람이 흑(선공)이에요.
+      <p className="px-3 text-center text-sm leading-relaxed text-amber-200/55">
+        같은 공부인 계정 친구끼리 코드를 공유해 실시간으로 둬요.
+        <br />
+        방을 만든 사람이 <b className="text-amber-200/90">흑(선공)</b>이에요.
       </p>
     </div>
   );
