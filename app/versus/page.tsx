@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   Loader2,
   Copy,
   Check,
+  X,
   Flag,
   Trophy,
   Zap,
@@ -20,7 +21,7 @@ import { getSupabaseBrowserClient, gongbuinUrl } from "@/lib/supabase/client";
 import { useAccount } from "@/lib/omok/useAccount";
 import { createRoom, joinRoom } from "@/lib/omok/pvp";
 import { usePvpRoom } from "@/lib/omok/usePvpRoom";
-import { Stone } from "@/lib/renju/types";
+import { Point, Stone } from "@/lib/renju/types";
 import GameBoard from "@/components/GameBoard";
 
 export default function VersusPage() {
@@ -161,6 +162,37 @@ function Room({ roomId, onLeave }: { roomId: string; onLeave: () => void }) {
   const [copied, setCopied] = useState(false);
   const [resignArm, setResignArm] = useState(false);
 
+  // 오터치 방지: 1탭 미리보기 → 같은 자리 2탭 착수 (AI 게임과 같은 설정 공유)
+  const [pending, setPending] = useState<Point | null>(null);
+  const [confirmMode, setConfirmMode] = useState(true);
+  useEffect(() => {
+    try {
+      const cm = localStorage.getItem("omok_confirm_mode");
+      if (cm !== null) setConfirmMode(cm === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  // 보드가 바뀌거나(상대/내 착수) 내 차례가 아니면 미리보기 해제
+  useEffect(() => {
+    setPending(null);
+  }, [v.room?.moves, v.isMyTurn]);
+
+  const handleTap = (x: number, y: number) => {
+    if (!v.isMyTurn) return;
+    if (v.forbidden.some((p) => p.x === x && p.y === y)) return; // 금수 자리는 미리보기도 안 함
+    if (!confirmMode) {
+      v.play(x, y);
+      return;
+    }
+    if (pending && pending.x === x && pending.y === y) {
+      v.play(x, y);
+      setPending(null);
+      return;
+    }
+    setPending({ x, y });
+  };
+
   if (v.loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-16 text-sm text-amber-200/50">
@@ -294,10 +326,40 @@ function Room({ roomId, onLeave }: { roomId: string; onLeave: () => void }) {
           winLine={v.winLine}
           forbidden={v.forbidden}
           disabled={!v.isMyTurn || over}
-          onPlay={v.play}
+          preview={pending}
+          previewColor={v.myColor ?? undefined}
+          onPlay={handleTap}
         />
         {myResult && <PvpResult kind={myResult} reason={room.reason} onLeave={onLeave} />}
       </div>
+
+      {/* 착수 확인 배너 */}
+      {pending && !over && (
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-amber-500/12 px-3 py-2.5 ring-1 ring-amber-400/30">
+          <span className="text-xs font-semibold text-amber-200">
+            여기에 둘까요? <span className="text-amber-200/60">한 번 더 터치 = 착수</span>
+          </span>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => {
+                v.play(pending.x, pending.y);
+                setPending(null);
+              }}
+              className="flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-stone-950 transition active:scale-95 hover:bg-amber-400"
+            >
+              <Check className="h-3.5 w-3.5" />
+              착수
+            </button>
+            <button
+              onClick={() => setPending(null)}
+              className="flex items-center gap-1 rounded-lg bg-stone-700 px-3 py-1.5 text-xs font-semibold text-amber-100/80 transition active:scale-95 hover:bg-stone-600"
+            >
+              <X className="h-3.5 w-3.5" />
+              취소
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 액션 */}
       {!over ? (
