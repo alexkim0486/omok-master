@@ -29,6 +29,7 @@ import {
   X,
   Flag,
   Users,
+  Play,
 } from "lucide-react";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = {
@@ -116,11 +117,19 @@ export default function GameScreen() {
     setResignArm(false);
   }, [g.moves, g.status.kind]);
 
+  // 시작 화면: 접속 직후엔 '게임 시작' 버튼을 보여주고, 누르기 전엔 게임/타이머 정지.
+  const [started, setStarted] = useState(false);
+  const startGame = () => {
+    setStarted(true);
+    practiceNewGame();
+  };
+
   // 수당 제한시간(30초): 내 차례에 카운트다운, 0이 되면 시간패(기권 처리).
   const [secsLeft, setSecsLeft] = useState<number | null>(null);
   const deadlineRef = useRef<number | null>(null);
   useEffect(() => {
     const humanTurn =
+      started &&
       g.status.kind === "playing" &&
       !g.thinking &&
       turnIsHuman &&
@@ -144,7 +153,7 @@ export default function GameScreen() {
     }, 250);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [g.status.kind, g.thinking, turnIsHuman, g.engineState, g.moves]);
+  }, [started, g.status.kind, g.thinking, turnIsHuman, g.engineState, g.moves]);
   const closeGuide = () => {
     setShowGuide(false);
     try {
@@ -373,6 +382,7 @@ export default function GameScreen() {
           forbidden={g.forbidden}
           disabled={
             loading ||
+            !started ||
             g.thinking ||
             g.status.kind !== "playing" ||
             !turnIsHuman
@@ -382,6 +392,13 @@ export default function GameScreen() {
           onPlay={handleBoardTap}
         />
         {loading && <LoadingOverlay pct={pct} />}
+        {!loading && !started && (
+          <StartOverlay
+            color={g.humanColor}
+            difficulty={DIFFICULTY_LABELS[g.difficulty]}
+            onStart={startGame}
+          />
+        )}
       </div>
 
       {/* 착수 확인 배너 (확인 후 두기 모드) */}
@@ -567,6 +584,33 @@ export default function GameScreen() {
         />
       )}
       {showRules && <RulesHelp onClose={() => setShowRules(false)} />}
+    </div>
+  );
+}
+
+/* ── Start overlay (게임 시작 버튼) ───────────────────────────── */
+function StartOverlay({
+  color,
+  difficulty,
+  onStart,
+}: {
+  color: Player;
+  difficulty: string;
+  onStart: () => void;
+}) {
+  return (
+    <div className="loading-overlay absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 rounded-3xl bg-stone-950/80 px-6 backdrop-blur-sm">
+      <p className="text-sm font-medium text-amber-200/70">
+        {color === Stone.Black ? "흑 (선공)" : "백 (후공)"} · 난이도 {difficulty}
+      </p>
+      <button
+        onClick={onStart}
+        className="result-pop flex items-center gap-2 rounded-2xl bg-amber-500 px-8 py-4 text-lg font-black text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400"
+      >
+        <Play className="h-6 w-6 fill-stone-950" />
+        게임 시작
+      </button>
+      <p className="text-xs text-amber-200/50">아래에서 돌·난이도를 먼저 골라도 돼요</p>
     </div>
   );
 }
