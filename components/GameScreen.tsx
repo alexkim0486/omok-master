@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useGame, DIFFICULTY_PRESETS, Difficulty } from "@/lib/game/useGame";
-import { Stone, Player } from "@/lib/renju/types";
+import { Stone, Player, Point } from "@/lib/renju/types";
 import GameBoard from "@/components/GameBoard";
 import RulesHelp from "@/components/RulesHelp";
 import GuideHelp from "@/components/GuideHelp";
@@ -25,6 +25,8 @@ import {
   LogIn,
   HelpCircle,
   Coffee,
+  Check,
+  X,
 } from "lucide-react";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = {
@@ -45,16 +47,63 @@ export default function GameScreen() {
   const g = useGame();
   const [showRules, setShowRules] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  // 오터치 방지: 첫 터치는 '미리보기', 같은 자리 한 번 더 터치하면 착수.
+  const [confirmMode, setConfirmMode] = useState(true);
+  const [pending, setPending] = useState<Point | null>(null);
   const loading = g.engineState === "loading";
 
-  // 첫 방문 시 사용 안내를 자동으로 한 번 보여준다.
+  // 첫 방문 시 사용 안내 자동 표시 + 저장된 착수 방식 불러오기.
   useEffect(() => {
     try {
       if (localStorage.getItem("omok_guide_seen") !== "1") setShowGuide(true);
+      const cm = localStorage.getItem("omok_confirm_mode");
+      if (cm !== null) setConfirmMode(cm === "1");
     } catch {
       /* localStorage 불가 환경 무시 */
     }
   }, []);
+
+  // 보드가 바뀌면(착수/AI응수/무르기/새게임) 미리보기 해제.
+  useEffect(() => {
+    setPending(null);
+  }, [g.moves]);
+
+  const changeConfirmMode = (on: boolean) => {
+    setConfirmMode(on);
+    setPending(null);
+    try {
+      localStorage.setItem("omok_confirm_mode", on ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // 보드 터치 처리: 확인 후 두기면 1탭=미리보기, 같은 자리 2탭=착수.
+  const handleBoardTap = (x: number, y: number) => {
+    if (g.forbidden.some((p) => p.x === x && p.y === y)) return; // 금수 자리는 미리보기도 안 함
+    if (!confirmMode) {
+      g.playAt(x, y);
+      return;
+    }
+    if (pending && pending.x === x && pending.y === y) {
+      g.playAt(x, y);
+      setPending(null);
+      return;
+    }
+    setPending({ x, y });
+  };
+
+  const confirmPending = () => {
+    if (!pending) return;
+    g.playAt(pending.x, pending.y);
+    setPending(null);
+  };
+
+  // 게임 종료 시 화면 중앙 결과 표시 (승/패/무). 새 게임 시작하면 다시 보이게 리셋.
+  const [resultDismissed, setResultDismissed] = useState(false);
+  useEffect(() => {
+    if (g.status.kind === "playing") setResultDismissed(false);
+  }, [g.status.kind]);
   const closeGuide = () => {
     setShowGuide(false);
     try {
@@ -101,7 +150,7 @@ export default function GameScreen() {
       accent: "text-sky-300 bg-sky-500/10 ring-sky-400/20",
     },
     "human-turn": {
-      text: "당신 차례",
+      text: "어디에 둘까요?",
       icon: null,
       accent: "text-amber-100 bg-stone-800/60 ring-amber-200/10",
     },
@@ -268,10 +317,37 @@ export default function GameScreen() {
             g.status.kind !== "playing" ||
             !turnIsHuman
           }
-          onPlay={g.playAt}
+          preview={pending}
+          previewColor={g.currentPlayer}
+          onPlay={handleBoardTap}
         />
         {loading && <LoadingOverlay pct={pct} />}
       </div>
+
+      {/* 착수 확인 배너 (확인 후 두기 모드) */}
+      {pending && (
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-amber-500/12 px-3 py-2.5 ring-1 ring-amber-400/30">
+          <span className="text-xs font-semibold text-amber-200">
+            여기에 둘까요? <span className="text-amber-200/60">한 번 더 터치 = 착수</span>
+          </span>
+          <div className="flex gap-1.5">
+            <button
+              onClick={confirmPending}
+              className="flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-stone-950 transition active:scale-95 hover:bg-amber-400"
+            >
+              <Check className="h-3.5 w-3.5" />
+              착수
+            </button>
+            <button
+              onClick={() => setPending(null)}
+              className="flex items-center gap-1 rounded-lg bg-stone-700 px-3 py-1.5 text-xs font-semibold text-amber-100/80 transition active:scale-95 hover:bg-stone-600"
+            >
+              <X className="h-3.5 w-3.5" />
+              취소
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Primary actions */}
       <div className="grid grid-cols-2 gap-3">
@@ -336,6 +412,16 @@ export default function GameScreen() {
           )}
           onChange={(v) => practiceNewGame(g.humanColor, v as Difficulty)}
         />
+        <div className="h-px bg-amber-200/8" />
+        <Segmented
+          label="착수"
+          value={confirmMode ? "confirm" : "instant"}
+          options={[
+            { value: "confirm", label: "확인 후" },
+            { value: "instant", label: "바로" },
+          ]}
+          onChange={(v) => changeConfirmMode(v === "confirm")}
+        />
       </section>
 
       {/* 휴식 안내 (지속 표시) */}
@@ -375,6 +461,23 @@ export default function GameScreen() {
         </p>
       </footer>
 
+      {isGameOver && !resultDismissed && (
+        <ResultOverlay
+          kind={
+            g.status.kind === "draw"
+              ? "draw"
+              : g.status.kind === "won" && g.status.winner === g.humanColor
+                ? "win"
+                : "lose"
+          }
+          onClose={() => setResultDismissed(true)}
+          onNewGame={() => {
+            setResultDismissed(true);
+            practiceNewGame();
+          }}
+        />
+      )}
+
       {showGuide && (
         <GuideHelp
           onClose={closeGuide}
@@ -385,6 +488,72 @@ export default function GameScreen() {
         />
       )}
       {showRules && <RulesHelp onClose={() => setShowRules(false)} />}
+    </div>
+  );
+}
+
+/* ── Result overlay (center WIN / LOSE / DRAW) ────────────────── */
+function ResultOverlay({
+  kind,
+  onClose,
+  onNewGame,
+}: {
+  kind: "win" | "lose" | "draw";
+  onClose: () => void;
+  onNewGame: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const cfg = {
+    win: { word: "WIN", ko: "당신 승리!", color: "text-amber-300", ring: "ring-amber-400/30", icon: <Trophy className="h-8 w-8" /> },
+    lose: { word: "LOSE", ko: "AI 승리", color: "text-rose-300", ring: "ring-rose-400/30", icon: <Zap className="h-8 w-8" /> },
+    draw: { word: "DRAW", ko: "무승부", color: "text-stone-200", ring: "ring-stone-400/30", icon: <Handshake className="h-8 w-8" /> },
+  }[kind];
+
+  return (
+    <div
+      className="loading-overlay fixed inset-0 z-50 flex items-center justify-center bg-stone-950/75 px-6 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={cfg.ko}
+    >
+      <div
+        className={
+          "result-pop flex w-full max-w-xs flex-col items-center gap-4 rounded-3xl bg-stone-900/95 px-6 py-8 text-center ring-1 " +
+          cfg.ring
+        }
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={"flex h-16 w-16 items-center justify-center rounded-2xl bg-stone-800/80 " + cfg.color}>
+          {cfg.icon}
+        </div>
+        <div>
+          <p className={"text-5xl font-black leading-none tracking-tight " + cfg.color}>{cfg.word}</p>
+          <p className="mt-2 text-sm font-semibold text-amber-100/80">{cfg.ko}</p>
+        </div>
+        <div className="flex w-full flex-col gap-2 pt-1">
+          <button
+            onClick={onNewGame}
+            className="flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-bold text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400"
+          >
+            <Plus className="h-4 w-4" />
+            다시 하기
+          </button>
+          <button
+            onClick={onClose}
+            className="rounded-2xl bg-stone-800 px-4 py-2.5 text-xs font-semibold text-amber-100/70 ring-1 ring-amber-200/10 transition active:scale-95 hover:bg-stone-700"
+          >
+            결과 보기 (닫기)
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

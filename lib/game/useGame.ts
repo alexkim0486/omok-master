@@ -65,6 +65,8 @@ export function useGame(): GameView {
   const [thinking, setThinking] = useState(false);
   const [engineState, setEngineState] = useState<EngineState>("loading");
   const [loadingProgress, setLoadingProgress] = useState(0);
+  // 무르기는 한 게임당 1회만 허용.
+  const [undoUsed, setUndoUsed] = useState(false);
 
   const engineRef = useRef<RapfiEngine | null>(null);
   // Increments on every new game so stale async AI results can be discarded.
@@ -150,6 +152,7 @@ export function useGame(): GameView {
       setDifficultyState(diff);
       setStatus({ kind: "playing" });
       setThinking(false);
+      setUndoUsed(false);
       setMoves([]);
     },
     [humanColor, difficulty],
@@ -157,10 +160,12 @@ export function useGame(): GameView {
 
   const undo = useCallback(() => {
     if (thinking) return;
+    if (undoUsed) return; // 한 게임당 1회만
     if (status.kind !== "playing" && status.kind !== "won" && status.kind !== "draw") return;
     gameIdRef.current += 1; // discard any in-flight AI result
     engineRef.current?.restart();
     setStatus({ kind: "playing" });
+    setUndoUsed(true);
     setMoves((prev) => {
       // Remove back to the human's turn: drop trailing moves until the last
       // move is the AI's (so it becomes the human's turn) or the board is empty.
@@ -171,7 +176,7 @@ export function useGame(): GameView {
       if (turn !== humanColor && next.length > 0) next.pop();
       return next;
     });
-  }, [thinking, status.kind, humanColor]);
+  }, [thinking, undoUsed, status.kind, humanColor]);
 
   const setDifficulty = useCallback((d: Difficulty) => setDifficultyState(d), []);
 
@@ -223,7 +228,7 @@ export function useGame(): GameView {
   }, [moves, status.kind, currentPlayer, aiColor, engineState, difficulty]);
 
   const canUndo =
-    moves.length > 0 && !thinking && engineState !== "loading";
+    moves.length > 0 && !thinking && engineState !== "loading" && !undoUsed;
 
   return {
     grid,

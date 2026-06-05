@@ -9,6 +9,8 @@ export interface GameBoardProps {
   winLine?: Point[];        // highlight these intersections (winning five)
   forbidden?: Point[];      // mark these empty intersections with a red ✕ (Black forbidden points)
   disabled?: boolean;       // when true, ignore user input (AI thinking / game over)
+  preview?: Point | null;   // pending (un-confirmed) move shown as a ghost stone with a confirm ring
+  previewColor?: Stone.Black | Stone.White; // colour of the pending preview stone
   onPlay: (x: number, y: number) => void; // called with the intersection the user tapped
 }
 
@@ -389,6 +391,30 @@ function drawGhostStone(
   ctx.restore();
 }
 
+/** Draw the pending (un-confirmed) move: a translucent stone + dashed amber
+ *  "confirm" ring signalling "tap again here to place". */
+function drawPreviewStone(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  stoneRadius: number,
+  stone: Stone.Black | Stone.White
+) {
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  drawStone(ctx, px, py, stoneRadius, stone, 1);
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(245,196,81,0.95)";
+  ctx.lineWidth = Math.max(1.5, stoneRadius * 0.16);
+  ctx.setLineDash([stoneRadius * 0.5, stoneRadius * 0.42]);
+  ctx.beginPath();
+  ctx.arc(px, py, stoneRadius * 1.2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // ─── Animation state (module-level, per-instance via ref) ────────────────────
 interface AnimEntry {
   gx: number;
@@ -403,6 +429,8 @@ export default function GameBoard({
   winLine,
   forbidden,
   disabled = false,
+  preview,
+  previewColor,
   onPlay,
 }: GameBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -506,9 +534,15 @@ export default function GameBoard({
         drawForbidden(ctx, forbidden, grid, margin, spacing, stoneRadius);
       }
 
+      // ── Pending preview (two-tap confirm): translucent stone + confirm ring ──
+      if (preview && previewColor && grid[preview.y]?.[preview.x] === Stone.Empty) {
+        const { px, py } = gridToPixel(preview.x, preview.y, margin, spacing);
+        drawPreviewStone(ctx, px, py, stoneRadius, previewColor);
+      }
+
       // ── Ghost stone preview (hover, desktop only) ────────────────────────────
       const hover = hoverRef.current;
-      if (hover && !disabled) {
+      if (hover && !disabled && !preview) {
         const { px, py } = gridToPixel(hover.gx, hover.gy, margin, spacing);
         const { black, white } = countStones();
         const nextPlayer = black <= white ? Stone.Black : Stone.White;
@@ -517,7 +551,7 @@ export default function GameBoard({
 
       ctx.restore();
     },
-    [grid, lastMove, winLine, forbidden, disabled, countStones]
+    [grid, lastMove, winLine, forbidden, disabled, preview, previewColor, countStones]
   );
 
   // ── Animation loop ───────────────────────────────────────────────────────────

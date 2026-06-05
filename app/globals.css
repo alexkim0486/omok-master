@@ -228,3 +228,16 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .engine-badge-ready::after { display: none; }
 }
+
+/* ── Result overlay pop-in (WIN/LOSE/DRAW) ────────────────────── */
+@keyframes result-pop {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+.result-pop {
+  animation: result-pop 0.32s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .result-pop { animation: none; }
+}
