@@ -24,6 +24,7 @@ import {
   Crown,
   LogIn,
   HelpCircle,
+  Home,
   Coffee,
   Check,
   X,
@@ -214,6 +215,9 @@ export default function GameScreen() {
 
   // ── Account / token economy (공부인 연동) ──
   const { account, isGuest, noSupabase, refresh } = useAccount();
+  const nickname = account?.nickname?.trim();
+  const statusText =
+    statusKind === "human-turn" && nickname ? `${nickname}님, 어디에 둘까요?` : sc.text;
   const ratedCtxRef = useRef<{ difficulty: Difficulty; color: Player } | null>(null);
   const recordedRef = useRef(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -296,6 +300,14 @@ export default function GameScreen() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href={gongbuinUrl()}
+            aria-label="공부인 홈으로"
+            className="flex items-center gap-1 rounded-full bg-stone-800/70 px-2.5 py-1.5 text-[11px] font-semibold text-amber-200/80 ring-1 ring-amber-200/10 transition active:scale-95 hover:bg-stone-700 hover:text-amber-100"
+          >
+            <Home className="h-3.5 w-3.5" />
+            공부인 홈
+          </a>
           <button
             onClick={() => setShowGuide(true)}
             aria-label="사용 안내"
@@ -319,7 +331,7 @@ export default function GameScreen() {
           <ColorDot color={g.currentPlayer} won={isGameOver} />
           <span className="flex items-center gap-2 text-sm font-semibold leading-none">
             {sc.icon}
-            <span>{sc.text}</span>
+            <span>{statusText}</span>
           </span>
         </div>
         <div className="flex items-center gap-3">
