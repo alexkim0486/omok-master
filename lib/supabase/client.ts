@@ -41,7 +41,7 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
   return _client;
 }
 
-/** URL of the gongbuin app, used to send guests to log in. */
+/** 공부인 홈/로그인으로 보낼 URL. env 미설정 시 공부인 홈(gongbuin.shop) 기본값. */
 export function gongbuinUrl(): string {
-  return process.env.NEXT_PUBLIC_GONGBUIN_URL?.trim() || "/";
+  return process.env.NEXT_PUBLIC_GONGBUIN_URL?.trim() || "https://gongbuin.shop";
 }
