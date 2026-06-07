@@ -18,6 +18,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { getSupabaseBrowserClient, gongbuinUrl } from "@/lib/supabase/client";
+import { SITE } from "@/lib/site";
 import { useAccount } from "@/lib/omok/useAccount";
 import { createRoom, joinRoom } from "@/lib/omok/pvp";
 import { usePvpRoom } from "@/lib/omok/usePvpRoom";
@@ -64,14 +65,14 @@ function GuestGate() {
       <p className="text-sm text-amber-100/80">
         친구 대전은 <b className="text-amber-200">로그인</b>이 필요해요.
         <br />
-        공부인 계정으로 로그인하면 친구와 실시간 오목을 둘 수 있어요.
+        {SITE.shortName} 계정으로 로그인하면 친구와 실시간 오목을 둘 수 있어요.
       </p>
       <a
         href={gongbuinUrl()}
         className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-stone-950 transition active:scale-95 hover:bg-amber-400"
       >
         <LogIn className="h-4 w-4" />
-        공부인 로그인하러 가기
+        {SITE.shortName} 로그인하러 가기
       </a>
     </div>
   );
@@ -149,7 +150,7 @@ function Lobby({ onEnter }: { onEnter: (id: string) => void }) {
       {error && <p className="text-center text-sm font-medium text-rose-300">{error}</p>}
 
       <p className="px-3 text-center text-sm leading-relaxed text-amber-200/55">
-        같은 공부인 계정 친구끼리 코드를 공유해 실시간으로 둬요.
+        같은 {SITE.shortName} 계정 친구끼리 코드를 공유해 실시간으로 둬요.
         <br />
         방을 만든 사람이 <b className="text-amber-200/90">흑(선공)</b>이에요.
       </p>

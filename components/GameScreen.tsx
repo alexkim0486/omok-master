@@ -9,6 +9,7 @@ import RulesHelp from "@/components/RulesHelp";
 import GuideHelp from "@/components/GuideHelp";
 import { useAccount } from "@/lib/omok/useAccount";
 import { getSupabaseBrowserClient, gongbuinUrl } from "@/lib/supabase/client";
+import { SITE } from "@/lib/site";
 import { spendRatedToken, spendPracticeToken, recordResult } from "@/lib/omok/account";
 import {
   RotateCcw,
@@ -40,11 +41,10 @@ const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   master: "최강",
 };
 
-// 공부인스터디카페 화정센터 정보
 const STUDYCAFE = {
-  name: "공부인스터디카페 화정센터",
-  address: "광주 서구 군분로179번길 14 3층",
-  phone: "010-4199-4170",
+  name: SITE.nameWithCenter,
+  address: SITE.address,
+  phone: SITE.phone,
 };
 
 const TURN_SECONDS = 30; // 내 차례 수당 제한시간
@@ -336,11 +336,11 @@ export default function GameScreen() {
           <div className="flex shrink-0 items-center gap-1.5">
             <a
               href={gongbuinUrl()}
-              aria-label="공부인 홈으로"
+              aria-label="홈으로"
               className="flex items-center gap-1 rounded-full bg-stone-800/70 px-2.5 py-1.5 text-[11px] font-semibold text-amber-200/80 ring-1 ring-amber-200/10 transition active:scale-95 hover:bg-stone-700 hover:text-amber-100"
             >
               <Home className="h-3.5 w-3.5" />
-              공부인 홈
+              {SITE.shortName} 홈
             </a>
             <button
               onClick={() => setShowGuide(true)}
@@ -398,7 +398,7 @@ export default function GameScreen() {
               className="flex items-center gap-1.5 text-xs font-semibold text-amber-200/80 transition hover:text-amber-100"
             >
               <LogIn className="h-3.5 w-3.5" />
-              공부인 로그인하고 랭킹전 즐기기
+              {SITE.shortName} 로그인하고 랭킹전 즐기기
             </a>
           ) : (
             <span className="flex items-center gap-1.5 text-sm font-semibold text-amber-100">

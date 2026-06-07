@@ -1,8 +1,10 @@
 import type { MetadataRoute } from "next";
 
+const siteName = process.env.NEXT_PUBLIC_SITE_NAME?.trim() || "공부인 스터디카페";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "공부인 스터디카페 오목 챔피언",
+    name: `${siteName} 오목 챔피언`,
     short_name: "오목 챔피언",
     description:
       "Gomocup 챔피언 엔진(Rapfi)과 대국하는 렌주(오목) 게임. 렌주룰·금수 적용.",
