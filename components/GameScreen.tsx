@@ -120,9 +120,9 @@ export default function GameScreen() {
 
   // 시작 화면: 접속 직후엔 '게임 시작' 버튼을 보여주고, 누르기 전엔 게임/타이머 정지.
   const [started, setStarted] = useState(false);
-  const startGame = () => {
-    setStarted(true);
-    practiceNewGame();
+  const startGame = async () => {
+    const ok = await startPaidGame();
+    if (ok) setStarted(true);
   };
 
   // 수당 제한시간(30초): 내 차례에 카운트다운, 0이 되면 시간패(기권 처리).
@@ -223,8 +223,11 @@ export default function GameScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const tokens = account?.tokens ?? 0;
+  const isAdmin = account?.role === "admin"; // 관리자는 토큰 없이 플레이
+  // 토큰을 차감하는 일반 게임 대상: 로그인한 비관리자(백엔드 있음)
+  const paidPlay = !isAdmin && !isGuest && !noSupabase;
 
-  // Practice (free) game — clears any rated context.
+  // 보드만 새로 까는 내부 함수 (토큰 처리 없음 — 설정 변경/관리자/게스트용).
   const practiceNewGame = (
     color: Player = g.humanColor,
     diff: Difficulty = g.difficulty,
@@ -233,6 +236,38 @@ export default function GameScreen() {
     recordedRef.current = false;
     setNotice(null);
     g.newGame(color, diff);
+  };
+
+  // 일반 게임 시작 — 비관리자는 토큰 1 차감, 게스트는 로그인 유도. 시작되면 true.
+  const startPaidGame = async (
+    color: Player = g.humanColor,
+    diff: Difficulty = g.difficulty,
+  ): Promise<boolean> => {
+    if (isAdmin || noSupabase) {
+      practiceNewGame(color, diff);
+      return true;
+    }
+    if (isGuest) {
+      window.location.href = gongbuinUrl(); // 로그인하러 공부인으로
+      return false;
+    }
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      practiceNewGame(color, diff);
+      return true;
+    }
+    setStarting(true);
+    setNotice(null);
+    const bal = await spendRatedToken(supabase);
+    setStarting(false);
+    if (bal === null) {
+      setNotice("토큰이 부족해요. 공부·출석·게시판으로 토큰을 모아보세요!");
+      return false;
+    }
+    practiceNewGame(color, diff);
+    setNotice("게임 시작! (토큰 -1)");
+    void refresh();
+    return true;
   };
 
   // Rated game — spend one token on the server, then start.
@@ -290,32 +325,35 @@ export default function GameScreen() {
   return (
     <div className="game-screen mx-auto flex min-h-screen w-full max-w-md flex-col gap-4 px-4 py-safe-5">
       {/* Header */}
-      <header className="flex items-start justify-between pt-1">
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[0.7rem] font-semibold tracking-wide text-amber-300/60">
+      <header className="pt-1">
+        {/* 1줄: 상호명(좌) + 공부인 홈·도움말(우) */}
+        <div className="flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-[0.7rem] font-semibold tracking-wide text-amber-300/60">
             {STUDYCAFE.name}
           </p>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <a
+              href={gongbuinUrl()}
+              aria-label="공부인 홈으로"
+              className="flex items-center gap-1 rounded-full bg-stone-800/70 px-2.5 py-1.5 text-[11px] font-semibold text-amber-200/80 ring-1 ring-amber-200/10 transition active:scale-95 hover:bg-stone-700 hover:text-amber-100"
+            >
+              <Home className="h-3.5 w-3.5" />
+              공부인 홈
+            </a>
+            <button
+              onClick={() => setShowGuide(true)}
+              aria-label="사용 안내"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-stone-800/70 text-amber-200/80 ring-1 ring-amber-200/10 transition active:scale-95 hover:bg-stone-700 hover:text-amber-100"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        {/* 2줄: 타이틀 + AI 배지 */}
+        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
           <h1 className="game-title text-[1.5rem] font-black leading-none tracking-tight text-amber-100">
             오목 챔피언
           </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <a
-            href={gongbuinUrl()}
-            aria-label="공부인 홈으로"
-            className="flex items-center gap-1 rounded-full bg-stone-800/70 px-2.5 py-1.5 text-[11px] font-semibold text-amber-200/80 ring-1 ring-amber-200/10 transition active:scale-95 hover:bg-stone-700 hover:text-amber-100"
-          >
-            <Home className="h-3.5 w-3.5" />
-            공부인 홈
-          </a>
-          <button
-            onClick={() => setShowGuide(true)}
-            aria-label="사용 안내"
-            className="flex items-center gap-1 rounded-full bg-stone-800/70 px-2.5 py-1.5 text-[11px] font-semibold text-amber-200/80 ring-1 ring-amber-200/10 transition active:scale-95 hover:bg-stone-700 hover:text-amber-100"
-          >
-            <HelpCircle className="h-3.5 w-3.5" />
-            도움말
-          </button>
           <EngineBadge state={g.engineState} pct={pct} />
         </div>
       </header>
@@ -409,6 +447,8 @@ export default function GameScreen() {
             color={g.humanColor}
             difficulty={DIFFICULTY_LABELS[g.difficulty]}
             onStart={startGame}
+            costLabel={paidPlay ? "토큰 1 소모" : null}
+            busy={starting}
           />
         )}
       </div>
@@ -441,10 +481,11 @@ export default function GameScreen() {
       {/* Primary actions */}
       <div className="grid grid-cols-3 gap-2.5">
         <button
-          onClick={() => practiceNewGame()}
-          className="flex items-center justify-center gap-1.5 rounded-2xl bg-amber-500 px-2 py-3 text-[13px] font-bold text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400"
+          onClick={() => void startPaidGame()}
+          disabled={starting}
+          className="flex items-center justify-center gap-1.5 rounded-2xl bg-amber-500 px-2 py-3 text-[13px] font-bold text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400 disabled:opacity-50"
         >
-          <Plus className="h-4 w-4" />새 게임
+          <Plus className="h-4 w-4" />새 게임{paidPlay ? " · 1" : ""}
         </button>
         <button
           onClick={g.undo}
@@ -506,7 +547,9 @@ export default function GameScreen() {
             { value: Stone.Black, label: "● 흑 선공" },
             { value: Stone.White, label: "○ 백 후공" },
           ]}
-          onChange={(v) => practiceNewGame(v as Player)}
+          onChange={(v) =>
+            started ? void startPaidGame(v as Player) : practiceNewGame(v as Player)
+          }
         />
         <div className="h-px bg-amber-200/8" />
         <Segmented
@@ -518,7 +561,11 @@ export default function GameScreen() {
               label: DIFFICULTY_LABELS[d],
             })
           )}
-          onChange={(v) => practiceNewGame(g.humanColor, v as Difficulty)}
+          onChange={(v) =>
+            started
+              ? void startPaidGame(g.humanColor, v as Difficulty)
+              : practiceNewGame(g.humanColor, v as Difficulty)
+          }
         />
         <div className="h-px bg-amber-200/8" />
         <Segmented
@@ -581,7 +628,7 @@ export default function GameScreen() {
           onClose={() => setResultDismissed(true)}
           onNewGame={() => {
             setResultDismissed(true);
-            practiceNewGame();
+            void startPaidGame();
           }}
         />
       )}
@@ -605,10 +652,14 @@ function StartOverlay({
   color,
   difficulty,
   onStart,
+  costLabel,
+  busy,
 }: {
   color: Player;
   difficulty: string;
   onStart: () => void;
+  costLabel?: string | null;
+  busy?: boolean;
 }) {
   return (
     <div className="loading-overlay absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 rounded-3xl bg-stone-950/80 px-6 backdrop-blur-sm">
@@ -617,12 +668,15 @@ function StartOverlay({
       </p>
       <button
         onClick={onStart}
-        className="result-pop flex items-center gap-2 rounded-2xl bg-amber-500 px-8 py-4 text-lg font-black text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400"
+        disabled={busy}
+        className="result-pop flex items-center gap-2 rounded-2xl bg-amber-500 px-8 py-4 text-lg font-black text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400 disabled:opacity-50"
       >
-        <Play className="h-6 w-6 fill-stone-950" />
-        게임 시작
+        {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Play className="h-6 w-6 fill-stone-950" />}
+        게임 시작{costLabel ? ` · ${costLabel}` : ""}
       </button>
-      <p className="text-xs text-amber-200/50">아래에서 돌·난이도를 먼저 골라도 돼요</p>
+      <p className="text-xs text-amber-200/50">
+        {costLabel ? "공부·출석·게시판으로 토큰을 모을 수 있어요" : "아래에서 돌·난이도를 먼저 골라도 돼요"}
+      </p>
     </div>
   );
 }

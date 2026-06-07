@@ -4,6 +4,7 @@ export interface OmokAccount {
   userId: string;
   nickname: string | null;
   tokens: number;
+  role: string;
 }
 
 /** Current logged-in account + token balance, or null if guest. */
@@ -17,7 +18,7 @@ export async function fetchAccount(
 
   const { data } = await supabase
     .from("profiles")
-    .select("nickname, omok_tokens")
+    .select("nickname, omok_tokens, role")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -25,6 +26,7 @@ export async function fetchAccount(
     userId: user.id,
     nickname: (data?.nickname as string | null) ?? null,
     tokens: Number(data?.omok_tokens ?? 0),
+    role: (data?.role as string | null) ?? "user",
   };
 }
 
