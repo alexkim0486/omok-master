@@ -98,7 +98,7 @@ export default function GuideHelp({
           {/* 연습 vs 랭킹전 */}
           <GuideCard icon={<Swords className="h-4 w-4 text-amber-300" />} title="연습 게임 vs 랭킹전">
             <ul className="ml-1 list-disc space-y-1 pl-4 marker:text-amber-400/50">
-              <li><b>연습 게임</b> — 무료. 부담 없이 마음껏 연습해요.</li>
+              <li><b>연습 게임</b> — 토큰 1개로 3판. 부담 없이 연습해요. (관리자는 무료)</li>
               <li>
                 <b>랭킹전</b> — 토큰 1개로 시작. 이기면 레이팅이 오르고 순위에 반영돼요.
               </li>
