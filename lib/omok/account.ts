@@ -5,6 +5,8 @@ export interface OmokAccount {
   nickname: string | null;
   tokens: number;
   role: string;
+  /** 남은 무료 연습판 (토큰 1개 = 연습 3판) */
+  practiceCredits: number;
 }
 
 /** Current logged-in account + token balance, or null if guest. */
@@ -18,7 +20,7 @@ export async function fetchAccount(
 
   const { data } = await supabase
     .from("profiles")
-    .select("nickname, omok_tokens, role")
+    .select("nickname, omok_tokens, role, omok_practice_credits")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -27,7 +29,21 @@ export async function fetchAccount(
     nickname: (data?.nickname as string | null) ?? null,
     tokens: Number(data?.omok_tokens ?? 0),
     role: (data?.role as string | null) ?? "user",
+    practiceCredits: Number(data?.omok_practice_credits ?? 0),
   };
+}
+
+/**
+ * Spend for one practice game: 토큰 1개로 연습 3판.
+ * 남은 무료 크레딧이 있으면 차감 없이 사용, 없으면 토큰 1 차감 후 3판 충전.
+ * Returns the new token balance, or null if no tokens (or guest).
+ */
+export async function spendPracticeToken(
+  supabase: SupabaseClient,
+): Promise<number | null> {
+  const { data, error } = await supabase.rpc("omok_spend_practice");
+  if (error || data === null || data === undefined) return null;
+  return Number(data);
 }
 
 /**

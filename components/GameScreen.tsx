@@ -9,7 +9,7 @@ import RulesHelp from "@/components/RulesHelp";
 import GuideHelp from "@/components/GuideHelp";
 import { useAccount } from "@/lib/omok/useAccount";
 import { getSupabaseBrowserClient, gongbuinUrl } from "@/lib/supabase/client";
-import { spendRatedToken, recordResult } from "@/lib/omok/account";
+import { spendRatedToken, spendPracticeToken, recordResult } from "@/lib/omok/account";
 import {
   RotateCcw,
   Plus,
@@ -256,16 +256,18 @@ export default function GameScreen() {
       practiceNewGame(color, diff);
       return true;
     }
+    // 연습은 토큰 1개로 3판 (남은 무료 크레딧 우선 사용)
+    const hadCredits = (account?.practiceCredits ?? 0) > 0;
     setStarting(true);
     setNotice(null);
-    const bal = await spendRatedToken(supabase);
+    const bal = await spendPracticeToken(supabase);
     setStarting(false);
     if (bal === null) {
       setNotice("토큰이 부족해요. 공부·출석·게시판으로 토큰을 모아보세요!");
       return false;
     }
     practiceNewGame(color, diff);
-    setNotice("게임 시작! (토큰 -1)");
+    setNotice(hadCredits ? "게임 시작! (무료 연습)" : "게임 시작! (토큰 1개로 3판)");
     void refresh();
     return true;
   };
@@ -402,6 +404,11 @@ export default function GameScreen() {
             <span className="flex items-center gap-1.5 text-sm font-semibold text-amber-100">
               <Coins className="h-4 w-4 text-amber-400" />
               토큰 <b className="tabular-nums">{tokens}</b>
+              {(account?.practiceCredits ?? 0) > 0 && (
+                <span className="text-[11px] font-medium text-emerald-300/80">
+                  · 무료 연습 {account?.practiceCredits}판
+                </span>
+              )}
             </span>
           )}
           <div className="flex items-center gap-3">
@@ -447,7 +454,13 @@ export default function GameScreen() {
             color={g.humanColor}
             difficulty={DIFFICULTY_LABELS[g.difficulty]}
             onStart={startGame}
-            costLabel={paidPlay ? "토큰 1 소모" : null}
+            costLabel={
+              paidPlay
+                ? (account?.practiceCredits ?? 0) > 0
+                  ? `무료 연습 ${account?.practiceCredits}판`
+                  : "토큰 1개로 3판"
+                : null
+            }
             busy={starting}
           />
         )}
@@ -485,7 +498,7 @@ export default function GameScreen() {
           disabled={starting}
           className="flex items-center justify-center gap-1.5 rounded-2xl bg-amber-500 px-2 py-3 text-[13px] font-bold text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400 disabled:opacity-50"
         >
-          <Plus className="h-4 w-4" />새 게임{paidPlay ? " · 1" : ""}
+          <Plus className="h-4 w-4" />새 게임
         </button>
         <button
           onClick={g.undo}
