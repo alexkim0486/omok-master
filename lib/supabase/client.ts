@@ -48,5 +48,5 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
  * 필요하면 이 값만 바꾸면 됨)
  */
 export function gongbuinUrl(): string {
-  return "https://gongbuin.shop";
+  return "https://gongbuin.co.kr";
 }
