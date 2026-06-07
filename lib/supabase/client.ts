@@ -41,7 +41,12 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
   return _client;
 }
 
-/** 공부인 홈/로그인으로 보낼 URL. env 미설정 시 공부인 홈(gongbuin.shop) 기본값. */
+/**
+ * 공부인 '통합앱' 홈/로그인 URL.
+ * 예전 env(NEXT_PUBLIC_GONGBUIN_URL)가 구버전 수능 모의고사를 가리켜 홈 버튼이
+ * 잘못 연결되던 문제로, 통합앱 도메인을 코드에 고정한다. (2호점 등 다른 도메인이
+ * 필요하면 이 값만 바꾸면 됨)
+ */
 export function gongbuinUrl(): string {
-  return process.env.NEXT_PUBLIC_GONGBUIN_URL?.trim() || "https://gongbuin.shop";
+  return "https://gongbuin.shop";
 }
