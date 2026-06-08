@@ -15,7 +15,7 @@ export default function RankingPage() {
       setRows([]);
       return;
     }
-    fetchRanking(supabase, 50)
+    fetchRanking(supabase, 30)
       .then(setRows)
       .catch(() => setRows([]));
   }, []);
@@ -33,7 +33,7 @@ export default function RankingPage() {
         <div className="flex items-center gap-2">
           <Crown className="h-5 w-5 text-amber-400" />
           <h1 className="game-title text-xl font-black tracking-tight text-amber-100">
-            랭킹전 순위
+            랭킹전 순위 TOP 30
           </h1>
         </div>
       </header>
@@ -78,7 +78,7 @@ export default function RankingPage() {
                 {r.nickname || "플레이어"}
               </p>
               <p className="text-[11px] text-amber-200/45">
-                {r.games}전 {r.wins}승 · 최고 {r.bestStreak}연승
+                {r.wins}승 · 최고 {r.bestStreak}연승
               </p>
             </div>
             <span className="rounded-lg bg-stone-900/50 px-2.5 py-1 text-sm font-bold tabular-nums text-amber-300">
