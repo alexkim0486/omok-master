@@ -34,6 +34,31 @@ export async function fetchAccount(
 }
 
 /**
+ * 내 닉네임 저장 (profiles.nickname). 공부인 프로필과 동일한 닉네임.
+ * 0033 트리거가 omok_ratings 도 동기화 → 랭킹에 즉시 반영(미적용 시 다음 경기부터).
+ * 빈 값으로 저장하면 null → 랭킹은 이메일 앞부분으로 폴백.
+ */
+export async function updateNickname(
+  supabase: SupabaseClient,
+  nickname: string,
+): Promise<boolean> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const trimmed = nickname.trim().slice(0, 20);
+  const { error } = await supabase
+    .from("profiles")
+    .update({ nickname: trimmed || null })
+    .eq("id", user.id);
+  if (error) {
+    console.error("닉네임 저장 실패:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
  * Spend for one practice game: 토큰 1개로 연습 3판.
  * 남은 무료 크레딧이 있으면 차감 없이 사용, 없으면 토큰 1 차감 후 3판 충전.
  * Returns the new token balance, or null if no tokens (or guest).

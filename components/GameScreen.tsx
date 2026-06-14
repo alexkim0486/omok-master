@@ -10,7 +10,7 @@ import GuideHelp from "@/components/GuideHelp";
 import { useAccount } from "@/lib/omok/useAccount";
 import { getSupabaseBrowserClient, gongbuinUrl } from "@/lib/supabase/client";
 import { SITE } from "@/lib/site";
-import { spendRatedToken, spendPracticeToken, recordResult } from "@/lib/omok/account";
+import { spendRatedToken, spendPracticeToken, recordResult, updateNickname } from "@/lib/omok/account";
 import {
   RotateCcw,
   Plus,
@@ -32,6 +32,7 @@ import {
   Flag,
   Users,
   Play,
+  UserRound,
 } from "lucide-react";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = {
@@ -223,6 +224,9 @@ export default function GameScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [ratedActive, setRatedActive] = useState(false); // 랭킹전 진행 중 표시
+  const [nickEditOpen, setNickEditOpen] = useState(false);
+  const [nickInput, setNickInput] = useState("");
+  const [savingNick, setSavingNick] = useState(false);
   const tokens = account?.tokens ?? 0;
   const isAdmin = account?.role === "admin"; // 관리자는 토큰 없이 플레이
   // 토큰을 차감하는 일반 게임 대상: 로그인한 비관리자(백엔드 있음)
@@ -308,6 +312,23 @@ export default function GameScreen() {
     setNotice("랭킹전 시작! 이제 오목판에 돌을 놓으세요 · 결과가 순위에 반영돼요");
     g.newGame(g.humanColor, g.difficulty);
     void refresh();
+  };
+
+  // 닉네임 설정 (원하는 사람만) — profiles.nickname 저장, 랭킹에 반영
+  const openNickEdit = () => {
+    setNickInput(account?.nickname ?? "");
+    setNickEditOpen(true);
+  };
+  const saveNick = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase || savingNick) return;
+    setSavingNick(true);
+    const ok = await updateNickname(supabase, nickInput);
+    setSavingNick(false);
+    if (ok) {
+      setNickEditOpen(false);
+      void refresh();
+    }
   };
 
   // Record a rated game's result when it ends (Elo + bonuses server-side).
@@ -428,6 +449,16 @@ export default function GameScreen() {
             </span>
           )}
           <div className="flex items-center gap-3">
+            {!isGuest && (
+              <button
+                onClick={openNickEdit}
+                aria-label="닉네임 설정"
+                className="flex items-center gap-1 text-xs font-medium text-amber-200/60 transition hover:text-amber-100"
+              >
+                <UserRound className="h-3.5 w-3.5" />
+                <span className="max-w-[5.5rem] truncate">{account?.nickname?.trim() || "닉네임"}</span>
+              </button>
+            )}
             <Link
               href="/versus"
               className="flex items-center gap-1 text-xs font-medium text-amber-200/60 transition hover:text-amber-100"
@@ -679,6 +710,53 @@ export default function GameScreen() {
         />
       )}
       {showRules && <RulesHelp onClose={() => setShowRules(false)} />}
+
+      {nickEditOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/75 px-6 backdrop-blur-sm"
+          onClick={() => !savingNick && setNickEditOpen(false)}
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl bg-stone-900 p-5 shadow-xl ring-1 ring-amber-200/15"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 flex items-center gap-2 text-amber-100">
+              <UserRound className="h-4 w-4 text-amber-400" />
+              <h2 className="text-sm font-bold">닉네임 설정</h2>
+            </div>
+            <p className="mb-3 text-[11px] text-amber-200/50">
+              랭킹에 표시될 이름이에요. 비워두면 이메일 앞부분으로 표시됩니다.
+            </p>
+            <input
+              value={nickInput}
+              onChange={(e) => setNickInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) void saveNick();
+              }}
+              maxLength={20}
+              placeholder="닉네임 (최대 20자)"
+              autoFocus
+              className="w-full rounded-xl bg-stone-800 px-3 py-2.5 text-sm text-amber-100 outline-none ring-1 ring-amber-200/10 placeholder:text-amber-200/30 focus:ring-amber-400/40"
+            />
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => setNickEditOpen(false)}
+                className="flex-1 rounded-xl bg-stone-800 py-2.5 text-sm font-bold text-amber-200/70"
+              >
+                취소
+              </button>
+              <button
+                onClick={saveNick}
+                disabled={savingNick}
+                className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 py-2.5 text-sm font-bold text-stone-950 disabled:opacity-50"
+              >
+                {savingNick ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
