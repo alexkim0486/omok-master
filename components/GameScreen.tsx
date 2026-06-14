@@ -304,7 +304,8 @@ export default function GameScreen() {
     ratedCtxRef.current = { difficulty: g.difficulty, color: g.humanColor };
     recordedRef.current = false;
     setRatedActive(true);
-    setNotice("랭킹전 시작! (토큰 -1) · 이 판의 결과가 순위에 반영돼요");
+    setStarted(true); // ★ 보드 활성화 — 이게 없어서 랭킹전 눌러도 못 두던 버그
+    setNotice("랭킹전 시작! 이제 오목판에 돌을 놓으세요 · 결과가 순위에 반영돼요");
     g.newGame(g.humanColor, g.difficulty);
     void refresh();
   };
