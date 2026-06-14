@@ -222,6 +222,7 @@ export default function GameScreen() {
   const recordedRef = useRef(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [ratedActive, setRatedActive] = useState(false); // 랭킹전 진행 중 표시
   const tokens = account?.tokens ?? 0;
   const isAdmin = account?.role === "admin"; // 관리자는 토큰 없이 플레이
   // 토큰을 차감하는 일반 게임 대상: 로그인한 비관리자(백엔드 있음)
@@ -234,6 +235,7 @@ export default function GameScreen() {
   ) => {
     ratedCtxRef.current = null;
     recordedRef.current = false;
+    setRatedActive(false);
     setNotice(null);
     g.newGame(color, diff);
   };
@@ -274,23 +276,35 @@ export default function GameScreen() {
 
   // Rated game — spend one token on the server, then start.
   const startRated = async () => {
-    if (noSupabase) return;
     const supabase = getSupabaseBrowserClient();
-    if (!supabase || isGuest) {
-      window.location.href = gongbuinUrl(); // 로그인하러 공부인으로
+    if (noSupabase || !supabase) {
+      setNotice("연결 오류예요. 새로고침 후 다시 시도해주세요.");
       return;
     }
     setStarting(true);
     setNotice(null);
+    // 세션 확인 — SSO가 안 넘어왔으면(로그인 풀림) 무반응 대신 명확히 안내
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setStarting(false);
+      setNotice("로그인이 필요해요. 공부인에서 로그인 후 오목으로 다시 들어와 주세요.");
+      window.setTimeout(() => {
+        window.location.href = gongbuinUrl();
+      }, 1500);
+      return;
+    }
     const bal = await spendRatedToken(supabase);
     setStarting(false);
     if (bal === null) {
-      setNotice("토큰이 부족해요. 공부·출석·게시판으로 토큰을 모아보세요!");
+      setNotice(`토큰이 부족해요 (보유 ${tokens}개). 공부·출석·게시판으로 토큰을 모아보세요!`);
       return;
     }
     ratedCtxRef.current = { difficulty: g.difficulty, color: g.humanColor };
     recordedRef.current = false;
-    setNotice("랭킹전 시작! (토큰 -1)");
+    setRatedActive(true);
+    setNotice("랭킹전 시작! (토큰 -1) · 이 판의 결과가 순위에 반영돼요");
     g.newGame(g.humanColor, g.difficulty);
     void refresh();
   };
@@ -301,6 +315,7 @@ export default function GameScreen() {
     const ctx = ratedCtxRef.current;
     if (!ctx || recordedRef.current) return;
     recordedRef.current = true;
+    setRatedActive(false); // 랭킹전 종료 → 진행 중 표시 해제
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
     const result: "win" | "loss" | "draw" =
@@ -533,18 +548,25 @@ export default function GameScreen() {
       {/* Rated game (랭킹전) — costs 1 token, affects Elo & rewards */}
       {!noSupabase && (
         <div className="flex flex-col gap-1.5">
-          <button
-            onClick={startRated}
-            disabled={starting}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-500 px-4 py-3.5 text-sm font-bold text-stone-950 shadow-amber transition active:scale-95 hover:to-amber-400 disabled:opacity-50"
-          >
-            {starting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+          {ratedActive && g.status.kind === "playing" ? (
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-amber-500/15 px-4 py-3.5 text-sm font-bold text-amber-300 ring-1 ring-amber-400/30">
               <Crown className="h-4 w-4" />
-            )}
-            {isGuest ? "로그인하고 랭킹전" : "랭킹전 시작 · 토큰 1"}
-          </button>
+              랭킹전 진행 중 · 결과가 순위에 반영돼요
+            </div>
+          ) : (
+            <button
+              onClick={startRated}
+              disabled={starting}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-500 px-4 py-3.5 text-sm font-bold text-stone-950 shadow-amber transition active:scale-95 hover:to-amber-400 disabled:opacity-50"
+            >
+              {starting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Crown className="h-4 w-4" />
+              )}
+              {isGuest ? "로그인하고 랭킹전" : "랭킹전 시작 · 토큰 1"}
+            </button>
+          )}
           {notice && (
             <p className="text-center text-xs font-medium text-amber-200/75">{notice}</p>
           )}
