@@ -15,6 +15,7 @@ import {
   opponent,
 } from "@/lib/renju/types";
 import { inBounds } from "@/lib/renju/board";
+import { isForbidden } from "@/lib/renju/forbidden";
 
 // Value of an open-ended run of length n for one direction.
 function runValue(count: number, openEnds: number): number {
@@ -73,15 +74,24 @@ function hasNeighbor(grid: Grid, x: number, y: number, radius = 2): boolean {
 /** Choose a move for `player`. Returns null only if the board is full. */
 export function chooseMove(grid: Grid, player: Player): Point | null {
   const center = (BOARD_SIZE - 1) / 2;
+  // Renju forbidden moves (double-three, double-four, overline) constrain Black
+  // only. The championship engine already obeys them; this fallback must too,
+  // otherwise an AI playing Black would happily make an illegal 3-3 / 4-4 / 장목.
+  const restrictBlack = player === Stone.Black;
   let best: Point | null = null;
   let bestScore = -1;
   let anyEmpty = false;
+  let anyLegal: Point | null = null; // first legal empty cell — safety fallback
   const foe = opponent(player);
 
   for (let y = 0; y < BOARD_SIZE; y++) {
     for (let x = 0; x < BOARD_SIZE; x++) {
       if (grid[y][x] !== Stone.Empty) continue;
       anyEmpty = true;
+      // Black may never play a forbidden point. A winning exact-five is exempt
+      // inside isForbidden, so genuine wins are still allowed.
+      if (restrictBlack && isForbidden(grid, x, y)) continue;
+      if (!anyLegal) anyLegal = { x, y };
       if (!hasNeighbor(grid, x, y)) continue;
 
       // Offense + weighted defense (block opponent threats).
@@ -99,7 +109,15 @@ export function chooseMove(grid: Grid, player: Player): Point | null {
   }
 
   if (best) return best;
-  // No stone-adjacent cell (e.g., empty board): play the center.
+  // No stone-adjacent legal cell: prefer the (legal) center, else any legal cell.
+  if (anyLegal) {
+    const centerLegal =
+      grid[center][center] === Stone.Empty &&
+      !(restrictBlack && isForbidden(grid, center, center));
+    return centerLegal ? { x: center, y: center } : anyLegal;
+  }
+  // Only forbidden/occupied cells remain (Black fully blocked) — last resort so
+  // the game resolves instead of hanging.
   if (anyEmpty) return { x: center, y: center };
   return null;
 }
