@@ -477,8 +477,14 @@ export default function GameScreen() {
         </div>
       )}
 
-      {/* Board container */}
-      <div className="board-wrapper relative rounded-3xl ring-1 ring-amber-200/8 shadow-board">
+      {/* Board container — during a rated game, drop it to the vertical center
+          (the footer already owns mt-auto, so the free space splits above/below). */}
+      <div
+        className={
+          "board-wrapper relative rounded-3xl ring-1 ring-amber-200/8 shadow-board" +
+          (ratedActive ? " mt-auto" : "")
+        }
+      >
         <GameBoard
           grid={g.grid}
           lastMove={g.lastMove}
@@ -499,7 +505,9 @@ export default function GameScreen() {
         {!loading && !started && (
           <StartOverlay
             color={g.humanColor}
-            difficulty={DIFFICULTY_LABELS[g.difficulty]}
+            difficulty={g.difficulty}
+            onColor={(c) => practiceNewGame(c, g.difficulty)}
+            onDifficulty={(d) => practiceNewGame(g.humanColor, d)}
             onStart={startGame}
             costLabel={
               paidPlay
@@ -761,35 +769,76 @@ export default function GameScreen() {
   );
 }
 
-/* ── Start overlay (게임 시작 버튼) ───────────────────────────── */
+/* ── Start overlay (게임 시작 버튼 + 돌·난이도 먼저 고르기) ──────── */
 function StartOverlay({
   color,
   difficulty,
+  onColor,
+  onDifficulty,
   onStart,
   costLabel,
   busy,
 }: {
   color: Player;
-  difficulty: string;
+  difficulty: Difficulty;
+  onColor: (c: Player) => void;
+  onDifficulty: (d: Difficulty) => void;
   onStart: () => void;
   costLabel?: string | null;
   busy?: boolean;
 }) {
+  // 선택 칩 공통 스타일: 선택되면 amber 강조, 아니면 차분한 stone.
+  const pill = (active: boolean) =>
+    "rounded-lg py-2 text-xs font-bold ring-1 transition active:scale-95 " +
+    (active
+      ? "bg-amber-500 text-stone-950 ring-amber-400 shadow-amber"
+      : "bg-stone-800/80 text-amber-100/55 ring-amber-200/10 hover:text-amber-100/90");
+
   return (
-    <div className="loading-overlay absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 rounded-3xl bg-stone-950/80 px-6 backdrop-blur-sm">
-      <p className="text-sm font-medium text-amber-200/70">
-        {color === Stone.Black ? "흑 (선공)" : "백 (후공)"} · 난이도 {difficulty}
+    <div className="loading-overlay absolute inset-0 z-20 flex flex-col items-center justify-center gap-3.5 rounded-3xl bg-stone-950/85 px-5 backdrop-blur-sm">
+      <p className="text-xs font-medium text-amber-200/70">
+        {color === Stone.Black ? "흑 (선공)" : "백 (후공)"} · 난이도 {DIFFICULTY_LABELS[difficulty]}
       </p>
       <button
         onClick={onStart}
         disabled={busy}
-        className="result-pop flex items-center gap-2 rounded-2xl bg-amber-500 px-8 py-4 text-lg font-black text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400 disabled:opacity-50"
+        className="result-pop flex items-center gap-2 rounded-2xl bg-amber-500 px-8 py-3.5 text-lg font-black text-stone-950 shadow-amber transition active:scale-95 hover:bg-amber-400 disabled:opacity-50"
       >
         {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Play className="h-6 w-6 fill-stone-950" />}
         게임 시작{costLabel ? ` · ${costLabel}` : ""}
       </button>
-      <p className="text-xs text-amber-200/50">
-        {costLabel ? "공부·출석·게시판으로 토큰을 모을 수 있어요" : "아래에서 돌·난이도를 먼저 골라도 돼요"}
+
+      {/* 게임 시작 바로 아래 — 돌·난이도 먼저 고르기 (토큰 차감 없이 즉시 반영) */}
+      <div className="w-full max-w-[15.5rem] space-y-2.5 rounded-2xl bg-stone-900/55 p-3 ring-1 ring-amber-200/10">
+        <div className="space-y-1.5">
+          <span className="block text-center text-[10px] font-semibold uppercase tracking-wider text-amber-200/45">
+            내 돌
+          </span>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button className={pill(color === Stone.Black)} onClick={() => onColor(Stone.Black)}>
+              ● 흑 선공
+            </button>
+            <button className={pill(color === Stone.White)} onClick={() => onColor(Stone.White)}>
+              ○ 백 후공
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <span className="block text-center text-[10px] font-semibold uppercase tracking-wider text-amber-200/45">
+            난이도
+          </span>
+          <div className="grid grid-cols-4 gap-1.5">
+            {(Object.keys(DIFFICULTY_PRESETS) as Difficulty[]).map((d) => (
+              <button key={d} className={pill(d === difficulty)} onClick={() => onDifficulty(d)}>
+                {DIFFICULTY_LABELS[d]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-amber-200/45">
+        {costLabel ? "토큰 1개로 3판 · 공부·출석·게시판으로 토큰을 모아요" : "원하는 돌과 난이도를 고르고 시작하세요"}
       </p>
     </div>
   );
