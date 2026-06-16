@@ -837,9 +837,10 @@ function StartOverlay({
         </div>
       </div>
 
-      <p className="text-[11px] text-amber-200/45">
-        {costLabel ? "토큰 1개로 3판 · 공부·출석·게시판으로 토큰을 모아요" : "원하는 돌과 난이도를 고르고 시작하세요"}
-      </p>
+      <div className="flex flex-col items-center gap-0.5 text-center text-[11px] text-amber-200/45">
+        <p>원하는 돌과 난이도를 고르고 시작하세요</p>
+        <p>토큰 1개로 3판의 연습게임을 할 수 있습니다</p>
+      </div>
     </div>
   );
 }
