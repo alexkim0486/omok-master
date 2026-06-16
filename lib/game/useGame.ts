@@ -203,7 +203,13 @@ export function useGame(): GameView {
       let point: Point | null = null;
       const engine = engineRef.current;
       try {
-        if (engineState === "ready" && engine) {
+        if (moves.length === 0) {
+          // AI opens the game (human chose White): always play center (천원).
+          // Instant, and sidesteps the engine's opening protocol entirely, so
+          // picking White never stalls or drops to the offline fallback.
+          const c = (BOARD_SIZE - 1) / 2;
+          point = { x: c, y: c };
+        } else if (engineState === "ready" && engine) {
           const p = await engine.bestMove(moves, {
             timeoutMs: preset.timeoutMs,
             strength: preset.strength,
@@ -217,8 +223,10 @@ export function useGame(): GameView {
           }
         }
       } catch {
-        // fall through to heuristic
-        if (!cancelled) setEngineState("fallback");
+        // Engine errored — drop to the heuristic. Only flag the offline badge
+        // for the CURRENT game: a new game / undo deliberately aborts an
+        // in-flight think, and that must not look like an engine failure.
+        if (!cancelled && gameIdRef.current === myGameId) setEngineState("fallback");
       }
       if (!point) point = chooseMove(grid, aiColor);
 

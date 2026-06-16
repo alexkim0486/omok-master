@@ -256,7 +256,17 @@ export class RapfiEngine {
 
   /** Tell the engine to begin a fresh game on the next think. */
   restart() {
-    if (this.ready) this.send("RESTART");
+    // Abort any in-flight search first, otherwise the next game's first think
+    // hits "engine is already thinking" and the caller drops to the offline AI.
+    if (this.pending) {
+      clearTimeout(this.pending.timer);
+      this.pending.reject(new Error("aborted"));
+      this.pending = null;
+    }
+    if (this.ready) {
+      this.stop();
+      this.send("RESTART");
+    }
     this.started = false;
   }
 
