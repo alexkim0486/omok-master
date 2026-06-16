@@ -546,6 +546,19 @@ export default function GameScreen() {
         </div>
       )}
 
+      {/* 착수 방식 — 보드 바로 아래, 액션 버튼 위 */}
+      <section className="rounded-2xl bg-stone-800/50 px-4 py-3 ring-1 ring-amber-200/8 backdrop-blur-sm">
+        <Segmented
+          label="착수"
+          value={confirmMode ? "confirm" : "instant"}
+          options={[
+            { value: "confirm", label: "확인 후" },
+            { value: "instant", label: "바로" },
+          ]}
+          onChange={(v) => changeConfirmMode(v === "confirm")}
+        />
+      </section>
+
       {/* Primary actions */}
       <div className="grid grid-cols-3 gap-2.5">
         <button
@@ -612,47 +625,6 @@ export default function GameScreen() {
           )}
         </div>
       )}
-
-      {/* Settings */}
-      <section className="flex flex-col gap-3.5 rounded-2xl bg-stone-800/50 p-4 ring-1 ring-amber-200/8 backdrop-blur-sm">
-        <Segmented
-          label="내 돌"
-          value={g.humanColor}
-          options={[
-            { value: Stone.Black, label: "● 흑 선공" },
-            { value: Stone.White, label: "○ 백 후공" },
-          ]}
-          onChange={(v) =>
-            started ? void startPaidGame(v as Player) : practiceNewGame(v as Player)
-          }
-        />
-        <div className="h-px bg-amber-200/8" />
-        <Segmented
-          label="난이도"
-          value={g.difficulty}
-          options={(Object.keys(DIFFICULTY_PRESETS) as Difficulty[]).map(
-            (d) => ({
-              value: d,
-              label: DIFFICULTY_LABELS[d],
-            })
-          )}
-          onChange={(v) =>
-            started
-              ? void startPaidGame(g.humanColor, v as Difficulty)
-              : practiceNewGame(g.humanColor, v as Difficulty)
-          }
-        />
-        <div className="h-px bg-amber-200/8" />
-        <Segmented
-          label="착수"
-          value={confirmMode ? "confirm" : "instant"}
-          options={[
-            { value: "confirm", label: "확인 후" },
-            { value: "instant", label: "바로" },
-          ]}
-          onChange={(v) => changeConfirmMode(v === "confirm")}
-        />
-      </section>
 
       {/* 휴식 안내 (지속 표시) */}
       <button
