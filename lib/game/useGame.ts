@@ -25,8 +25,8 @@ interface DifficultyPreset {
 export const DIFFICULTY_PRESETS: Record<Difficulty, DifficultyPreset> = {
   // 초보자도 이길 수 있도록 실력(strength)·생각시간을 크게 낮춤.
   // strength 0..100(높을수록 강함) + timeoutMs(생각시간)가 실질 난이도 다이얼.
-  easy: { timeoutMs: 200, strength: 10 }, // 입문: 자주 실수, 초보도 승리 가능
-  normal: { timeoutMs: 500, strength: 35 }, // 보통: 방심하면 지는 수준
+  easy: { timeoutMs: 200, strength: 5 }, // 입문: 자주 실수, 초보도 승리 가능
+  normal: { timeoutMs: 500, strength: 10 }, // 보통: 방심하면 지는 수준
   hard: { timeoutMs: 3000, strength: 100 },
   master: { timeoutMs: 8000, strength: 100 }, // 세계 최강
 };
